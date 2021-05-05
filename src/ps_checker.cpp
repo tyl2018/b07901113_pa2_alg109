@@ -51,7 +51,9 @@ int main(int argc, char* argv[]) {
         last_index = C[i][0];
         
         for(int j=0; j<i; j++) {
-            if( (C[j][1]-C[i][0]) * (C[j][1]-C[i][1]) < 0) {
+	    bool a = C[j][1]-C[i][0] > 0;
+	    bool b = C[j][1]-C[i][1] > 0;
+            if(a!=b) {
                 cout << "Invalid: chord " << j << " and chord " << i << " cross" << endl;
                 return 0;
             }
