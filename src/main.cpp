@@ -12,9 +12,8 @@
 
 using namespace std;
 
-void get_mps(int, vector<int>&, vector<int>&);
-int fill_table(int, vector<int>&, vector< vector<int> >&, vector< vector<int> >&);
-void find_subset(int, int, vector<int>&, vector< vector<int> >&, vector<int>&);
+int get_mps(int, vector<int>&, vector<int>&);
+int find_subset(int, int, vector<int>&, vector<int>&);
 
 void help_message() {
     cout << "usage: mps <input_file> <output_file>" << endl;
@@ -44,9 +43,9 @@ int main(int argc, char* argv[]) {
     }
     //////////// find mps ///////////
     vector<int> mps_index;
-    get_mps(sz, ep, mps_index);
+    int m = get_mps(sz, ep, mps_index);
     //////////// write the output file ///////////
-    fout << mps_index.size() << endl;
+    fout << m << endl;
     for(int i=0; i<mps_index.size(); i++) {
         fout << mps_index[i] << ' ' << ep[mps_index[i]] << endl;
     }
@@ -57,55 +56,33 @@ int main(int argc, char* argv[]) {
 
 
 
-void get_mps(int sz, vector<int> &ep, vector<int> &mps_index) {
-    vector<int> tmp_vec;
-    tmp_vec.assign(sz, 0);
-    vector< vector<int> > M(sz, tmp_vec);
-    tmp_vec.assign(sz, -1);
-    vector< vector<int> > S(sz, tmp_vec);
-    int m = fill_table(sz, ep, M, S);
-    cout << "Finding Subset" << endl;
+int get_mps(int sz, vector<int> &ep, vector<int> &mps_index) {
     mps_index.reserve(sz);
-    find_subset(0, sz-1, ep, S, mps_index);
-    cout << "done." << endl;
+    return find_subset(0, sz-1, ep, mps_index);
 }
 
-int fill_table(int sz, vector<int> &ep, vector< vector<int> > &M, vector< vector<int> > &S) {
-    cout << "Filling table" << endl;
-    for(int d=1; d<sz; d++) {
-	cout << d << " ";
-        for(int i=0; i<sz-d; i++) {
-            int j=i+d;
-            int k=ep[j];
-	    S[i][j] = S[i][j-1];
-            if(k<i || k>j) {    // Condition 1: k not in (i,j)
-                M[i][j] = M[i][j-1];
-            } else if(k==i) {   // Condition 2: kj = ij
-                M[i][j] = 1 + M[i][j-1];
-            } else {            // Condition 3: kj in (i,j)
-                M[i][j] = M[i][k-1] + 1 + M[k+1][j-1];
-                if(M[i][j-1] > M[i][j]) {
-                    M[i][j] = M[i][j-1];
-                } else {
-                    S[i][j] = j;  //record where condition 3 happens
-                }
-            }
+int find_subset(int i, int j, vector<int> &ep, vector<int> &v) { // return the number of chords in the subset
+    if(i >= j) {         // base case
+        return 0;
+    }
+    int k=ep[j];
+    if(k<i || k>j) {     // Condition 1: k not in (i,j)
+        return find_subset(i, j-1, ep, v);
+    } else if(k==i) {    // Condition 2: kj = ij
+        v.insert(v.end(), i);
+        return 1 + find_subset(i+1, j-1, ep, v);
+    } else {             // Condition 3: kj in (i,j)
+        vector<int> v_tmp(v);                      // vector used in the case (i, j-1)
+        int c1 = find_subset(i, j-1, ep, v_tmp);   // counter used in the case (i, j-1)
+        int c2 = find_subset(i, k-1, ep, v) + 1;   // counter used in the case (i, k-1) kj (k+1, j-1)
+        v.insert(v.end(), k);
+        c2 += find_subset(k+1, j-1, ep, v);
+        if(c1 > c2) {
+            v = move(v_tmp);
+            return c1;
+        } else {
+            return c2;
         }
-    }
-    cout << "done." << endl;
-    return M[0][sz-1];
-}
-
-void find_subset(int i, int j, vector<int> &ep, vector< vector<int> > &S, vector<int> &v) {
-    if(ep[i] > i && ep[i] > S[i][j] && ep[i] <= j) { // pass condition 2 along the way
-        v.push_back(i);
-    }
-    j = S[i][j]; 	// go to where condition 3 happens
-    if(j>=0) {
-        int k = ep[j];
-        find_subset(i, k-1, ep, S, v);
-        v.push_back(k);
-        find_subset(k+1, j-1, ep, S, v);
     }
 }
 
