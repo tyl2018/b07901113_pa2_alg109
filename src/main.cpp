@@ -12,8 +12,11 @@
 
 using namespace std;
 
+class tree_node; // use tree nodes to get the subsets
 int get_mps(int, vector<int>&, vector<int>&);
-int find_subset(int, int, vector<int>&, vector<int>&);
+int fill_table(int, int, vector<int>&, vector< vector<int> >&, vector< vector<tree_node*> >&, vector<tree_node>&);
+int write(int, int, int, tree_node*, vector< vector<int> >&, vector< vector<tree_node*> >&);
+void traverse(tree_node*, vector<tree_node>&, vector<int>&);
 
 void help_message() {
     cout << "usage: mps <input_file> <output_file>" << endl;
@@ -54,35 +57,79 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+class tree_node {
+public:
+    tree_node *lc;
+    tree_node *rc;
+    //tree_node *p;
+    int key; // i
+    tree_node():lc(NULL),rc(NULL),key(-1){};    // empty node constructor
+    tree_node(int k):lc(NULL),rc(NULL),key(k){}; // non-empty node constructor
+};
 
 
 int get_mps(int sz, vector<int> &ep, vector<int> &mps_index) {
     mps_index.reserve(sz);
-    return find_subset(0, sz-1, ep, mps_index);
+    vector<int> M_tmp(sz, -1);
+    vector< vector<int> > M(sz, M_tmp);
+    vector<tree_node*> N_tmp(sz, NULL);
+    vector< vector<tree_node*> > N(sz, N_tmp);
+    vector<tree_node> C;       // a container of the nodes
+    C.reserve(sz);
+    
+    int x = fill_table(0, sz-1, ep, M, N, C);
+    traverse(N[0][sz-1], C, mps_index);
+    return x;
 }
 
-int find_subset(int i, int j, vector<int> &ep, vector<int> &v) { // return the number of chords in the subset
-    if(i >= j) {         // base case
-        return 0;
+int fill_table(int i, int j, vector<int> &ep, vector< vector<int> > &M, vector< vector<tree_node*> > &N, vector<tree_node> &C) { // return the number of chords in the subset
+    if(M[i][j] != -1) {         // table filled before
+        return M[i][j];
+    } else if(i >= j) {         // base case
+        //cout << "base case " << i << ", " << j << endl;
+        //tree_node n();
+        //C.push_back(n);
+        return write(i, j, 0, NULL, M, N);
     }
     int k=ep[j];
     if(k<i || k>j) {     // Condition 1: k not in (i,j)
-        return find_subset(i, j-1, ep, v);
+        //cout << "(1) " << i << ", " << j << endl;
+        int m = fill_table(i, j-1, ep, M, N, C);
+        return write(i, j, m, N[i][j-1], M, N);
     } else if(k==i) {    // Condition 2: kj = ij
-        v.insert(v.end(), i);
-        return 1 + find_subset(i+1, j-1, ep, v);
+        //cout << "(2) " << i << ", " << j << endl;
+        tree_node n(i);
+        n.rc = N[i+1][j-1];
+        C.push_back(n);
+        int m = 1 + fill_table(i+1, j-1, ep, M, N, C);
+        return write(i, j, m, &C.back(), M, N);
     } else {             // Condition 3: kj in (i,j)
-        vector<int> v_tmp(v);                      // vector used in the case (i, j-1)
-        int c1 = find_subset(i, j-1, ep, v_tmp);   // counter used in the case (i, j-1)
-        int c2 = find_subset(i, k-1, ep, v) + 1;   // counter used in the case (i, k-1) kj (k+1, j-1)
-        v.insert(v.end(), k);
-        c2 += find_subset(k+1, j-1, ep, v);
-        if(c1 > c2) {
-            v = move(v_tmp);
-            return c1;
+        int m1 = fill_table(i, j-1, ep, M, N, C);   // counter used in the case (i, j-1)
+        int m2 = fill_table(i, k-1, ep, M, N, C) + 1 + fill_table(k+1, j-1, ep, M, N, C);   // counter used in the case (i, k-1) kj (k+1, j-1)
+        if(m1 > m2) {
+            //cout << "(3a) " << i << ", " << j << endl;
+            return write(i, j, m1, N[i][j-1], M, N);
         } else {
-            return c2;
+            //cout << "(3b) " << i << ", " << k << ", " << j << endl;
+            tree_node n(k);
+            n.lc = N[i][k-1];
+            n.rc = N[k+1][j-1];
+            C.push_back(n);
+            return write(i, j, m2, &C.back(), M, N);
         }
     }
 }
 
+int write(int i, int j, int m, tree_node *t, vector< vector<int> > &M, vector< vector<tree_node*> > &N) {
+    M[i][j] = m;
+    N[i][j] = t;
+    return m;
+}
+
+void traverse(tree_node *r, vector<tree_node> &C, vector<int> &list) {
+    if(r!=NULL) {
+        traverse(r->lc, C, list);
+        list.push_back(r->key);
+        traverse(r->rc, C, list);
+    }
+}
