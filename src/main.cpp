@@ -36,7 +36,6 @@ int main(int argc, char* argv[]) {
     fout.open(argv[2],ios::out);
     fin >> sz;
     int num1, num2;
-    //vector<int> ep;
     vector<int> ep(sz,-1); // i and data[i] share the same chord
     while (fin >> num1 >> num2) {
         //ep.push_back(num1);
@@ -75,7 +74,8 @@ int get_mps(int sz, vector<int> &ep, vector<int> &mps_index) {
     vector<tree_node*> N_tmp(sz, NULL);
     vector< vector<tree_node*> > N(sz, N_tmp);
     vector<tree_node> C;       // a container of the nodes
-    C.reserve(sz);
+    C.reserve(sz*sz);
+    //cout << C.capacity() << endl;
     
     int x = fill_table(0, sz-1, ep, M, N, C);
     traverse(N[0][sz-1], C, mps_index);
@@ -101,7 +101,8 @@ int fill_table(int i, int j, vector<int> &ep, vector< vector<int> > &M, vector< 
         tree_node n(i);
         n.rc = N[i+1][j-1];
         C.push_back(n);
-        int m = 1 + fill_table(i+1, j-1, ep, M, N, C);
+        cout << C.size() << ' ' << i << endl;
+	int m = 1 + fill_table(i+1, j-1, ep, M, N, C);
         return write(i, j, m, &C.back(), M, N);
     } else {             // Condition 3: kj in (i,j)
         int m1 = fill_table(i, j-1, ep, M, N, C);   // counter used in the case (i, j-1)
@@ -115,7 +116,8 @@ int fill_table(int i, int j, vector<int> &ep, vector< vector<int> > &M, vector< 
             n.lc = N[i][k-1];
             n.rc = N[k+1][j-1];
             C.push_back(n);
-            return write(i, j, m2, &C.back(), M, N);
+            cout << C.size() << ' ' << k << endl;
+	    return write(i, j, m2, &C.back(), M, N);
         }
     }
 }
