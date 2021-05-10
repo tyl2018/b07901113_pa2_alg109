@@ -12,11 +12,10 @@
 
 using namespace std;
 
-class tree_node; // use tree nodes to get the subsets
 int get_mps(int, vector<int>&, vector<int>&);
-int fill_table(int, int, vector<int>&, vector< vector<int> >&, vector< vector<tree_node> >&);
-int write(int, int, int, tree_node, vector< vector<int> >&, vector< vector<tree_node> >&);
-void traverse(tree_node*, vector<int>&);
+int fill_table(int, int, vector<int>&, vector< vector<int> >&, vector< vector<int> >&);
+int write(int, int, int, int, vector< vector<int> >&, vector< vector<int> >&);
+void load_index(int, int, vector<int>&, vector< vector<int> >&, vector<int>&);
 
 void help_message() {
     cout << "usage: mps <input_file> <output_file>" << endl;
@@ -46,7 +45,6 @@ int main(int argc, char* argv[]) {
     }
     //////////// find mps ///////////
     vector<int> mps_index;
-    // cout << sz << endl;
     int m = get_mps(sz, ep, mps_index);
     //////////// write the output file ///////////
     fout << m << endl;
@@ -58,89 +56,57 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-class tree_node {
-public:
-    tree_node *lc;
-    tree_node *rc;
-    //tree_node *p;
-    int key; // i
-    tree_node():lc(NULL),rc(NULL),key(-1){};    // empty node constructor
-    tree_node(int k):lc(NULL),rc(NULL),key(k){}; // non-empty node constructor
-};
-
-
 int get_mps(int sz, vector<int> &ep, vector<int> &mps_index) {
     mps_index.reserve(sz);
-    vector<int> M_tmp(sz, -1);
-    vector< vector<int> > M(sz, M_tmp);
-    tree_node n;
-    vector<tree_node> N_tmp(sz, n);
-    vector< vector<tree_node> > N(sz, N_tmp);
-    //vector<tree_node> C;       // a container of the nodes
-    //C.reserve(sz);
-    // cout << sz << endl;
-    int x = fill_table(0, sz-1, ep, M, N);
-    traverse(&N[0][sz-1], mps_index);
+    vector<int> v_tmp(sz, -1);
+    vector< vector<int> > M(sz, v_tmp);
+    vector< vector<int> > S(M);
+    int x = fill_table(0, sz-1, ep, M, S);
+    load_index(0, sz-1, ep, S, mps_index);
     return x;
 }
 
-int fill_table(int i, int j, vector<int> &ep, vector< vector<int> > &M, vector< vector<tree_node> > &N) { // return the number of chords in the subset
-    //cout << i << " " << j << endl;
+int fill_table(int i, int j, vector<int> &ep, vector< vector<int> > &M, vector< vector<int> > &S) { // return the number of chords in the subset
     if(M[i][j] != -1) {         // table filled before
         return M[i][j];
     } else if(i >= j) {         // base case
-        //cout << "base case " << i << ", " << j << endl;
-        tree_node n;
-        //C.push_back(n);
-        return write(i, j, 0, n, M, N);
+        return write(i, j, 0, -1, M, S);
     }
-    //cout << j << endl;
     int k=ep[j];
     if(k<i || k>j) {     // Condition 1: k not in (i,j)
-        int m = fill_table(i, j-1, ep, M, N);
-        return write(i, j, m, N[i][j-1], M, N);
+        int m = fill_table(i, j-1, ep, M, S);
+        return write(i, j, m, S[i][j-1], M, S);
     } else if(k==i) {    // Condition 2: kj = ij
-        tree_node n(i);
-        n.lc = &N[0][0];    //just an empty node
-        n.rc = &N[i+1][j-1];
-        int m = 1 + fill_table(i+1, j-1, ep, M, N);
-        return write(i, j, m, n, M, N);
+        int m = 1 + fill_table(i, j-1, ep, M, S);
+        return write(i, j, m, S[i][j-1]-ep.size()-1, M, S);
     } else {             // Condition 3: kj in (i,j)
-        int m1 = fill_table(i, j-1, ep, M, N);   // counter used in the case (i, j-1)
-        int m2 = fill_table(i, k-1, ep, M, N) + 1 + fill_table(k+1, j-1, ep, M, N);   // counter used in the case (i, k-1) kj (k+1, j-1)
+        int m1 = fill_table(i, j-1, ep, M, S);   // counter used in the case (i, j-1)
+        int m2 = fill_table(i, k-1, ep, M, S) + 1 + fill_table(k+1, j-1, ep, M, S);   // counter used in the case (i, k-1) kj (k+1, j-1)
         if(m1 > m2) {
-            return write(i, j, m1, N[i][j-1], M, N);
+            return write(i, j, m1, S[i][j-1], M, S);
         } else {
-            tree_node n(k);
-            n.lc = &N[i][k-1];
-            n.rc = &N[k+1][j-1];
-            //C.push_back(n);
-            return write(i, j, m2, n, M, N);
+            return write(i, j, m2, j, M, S);
         }
     }
 }
 
-int write(int i, int j, int m, tree_node n, vector< vector<int> > &M, vector< vector<tree_node> > &N) {
+int write(int i, int j, int m, int s, vector< vector<int> > &M, vector< vector<int> > &S) {
     M[i][j] = m;
-    N[i][j] = n;
-    /*
-    cout << i << ' ' << j << endl;
-    cout << n.key << endl;
-    cout << &N[i][j] << endl;
-    cout << n.lc << endl;
-    cout << n.rc << endl;
-    cout << endl;
-     */
+    S[i][j] = s;
     return m;
 }
 
-void traverse(tree_node *r, vector<int> &list) {
-    if(r->key != -1) {
-        cout << r->key << endl;
-        //cout << "lc" << endl;
-        traverse(r->lc, list);
-        list.push_back(r->key);
-        //cout << "rc" << endl;
-        traverse(r->rc, list);
+void load_index(int i, int j, vector<int> &ep, vector< vector<int> > &S, vector<int> &mps_index) {
+    int s = S[i][j];
+    if(s < -1) { // pass condition 2 along the way
+        mps_index.push_back(i);
+        s += ep.size()+1;
+    }
+    if(s >= 0) {
+        j = s;  // go to where condition 3 happens
+        int k = ep[j];
+        load_index(i, k-1, ep, S, mps_index);
+        mps_index.push_back(k);
+        load_index(k+1, j-1, ep, S, mps_index);
     }
 }
